@@ -4,66 +4,170 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PDF Certificate Generator</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <!-- Load pdf-lib library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+    <!-- Load xlsx library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.16.9/xlsx.full.min.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
-        }
-        .certificate {
-            border: 2px solid #000;
-            width: 600px;
-            height: 400px;
-            padding: 20px;
-            text-align: center;
-            margin: auto;
-            display: none; /* Hide initially */
         }
     </style>
 </head>
 <body>
 
-    <h1>Certificate Generator</h1>
-    <form id="certForm">
-        <label for="name">Name:</label>
-        <input type="text" id="name" required><br><br>
-        <label for="date">Date:</label>
-        <input type="text" id="date" required><br><br>
-        <button type="submit">Generate Certificate</button>
-    </form>
+<h1>Certificate Generator</h1>
+<input type="file" id="fileInput" accept=".xlsx" required>
+<button id="generateButton">Generate Certificates</button>
 
-    <div class="certificate" id="certificate">
-        <h2>Certificate of Completion</h2>
-        <p>This certifies that</p>
-        <h3 id="certName"></h3>
-        <p>has completed the course.</p>
-        <p>Date: <span id="certDate"></span></p>
-    </div>
+<script>
+    document.getElementById('generateButton').addEventListener('click', async () => {
+        const fileInput = document.getElementById('fileInput');
+        const file = fileInput.files[0];
 
-    <script>
-        document.getElementById('certForm').addEventListener('submit', function (e) {
-            e.preventDefault();
-            const name = document.getElementById('name').value;
-            const date = document.getElementById('date').value;
+        if (!file) {
+            alert("Please upload an Excel file.");
+            return;
+        }
+
+        const data = await readExcel(file);
+        if (!data || data.length < 2) {
+            alert("No valid data found in the Excel file.");
+            return;
+        }
+
+        for (let i = 1; i < data.length; i++) { // Start from 1 to skip header row
+            const entry = data[i];
+            if (entry.length === 0) continue; // Skip empty lines
+
+            const [certifiedName, attendeeName, heldOn, cpdHours, membershipNo] = entry;
+
+            // Generate PDF for each entry
+            await generatePDF({
+                certifiedName,
+                attendeeName,
+                heldOn,
+                cpdHours,
+                membershipNo
+            });
+        }
+    });
+
+    async function readExcel(file) {
+        try {
+            const data = await file.arrayBuffer();
+            const workbook = XLSX.read(data, { type: "array" });
+            const sheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[sheetName];
+
+            const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+            // Filter out empty rows
+            const filteredRows = rows.filter(row => row.length > 0);
             
-            document.getElementById('certName').innerText = name;
-            document.getElementById('certDate').innerText = date;
-            document.getElementById('certificate').style.display = 'block';
+            return filteredRows;
+        } catch (error) {
+            console.error("Error reading the Excel file:", error);
+            alert("Failed to read the Excel file. Please ensure it is in the correct format.");
+            return [];
+        }
+    }
 
-            // Generate PDF
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
-            doc.setFontSize(22);
-            doc.text('Certificate of Completion', 105, 40, null, null, 'center');
-            doc.setFontSize(16);
-            doc.text('This certifies that', 105, 70, null, null, 'center');
-            doc.setFontSize(24);
-            doc.text(name, 105, 90, null, null, 'center');
-            doc.setFontSize(16);
-            doc.text('has completed the course.', 105, 110, null, null, 'center');
-            doc.text(`Date: ${date}`, 105, 130, null, null, 'center');
-            doc.save('certificate.pdf');
-        });
-    </script>
+    async function generatePDF(entry) {
+        const url = 'template.pdf'; // Ensure this path is correct
+
+        try {
+            const existingPdfBytes = await fetch(url).then(res => {
+                if (!res.ok) throw new Error('Failed to fetch PDF template.');
+                return res.arrayBuffer();
+            });
+
+            const pdfDoc = await PDFLib.PDFDocument.load(existingPdfBytes);
+            const pages = pdfDoc.getPages();
+            const firstPage = pages[0];
+
+            // Embed standard fonts
+            const helveticaFont = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
+            const helveticaBoldFont = await pdfDoc.embedFont(PDFLib.StandardFonts.HelveticaBold);
+
+            // Draw text on the PDF
+            firstPage.drawText('THIS CERTIFIES THAT:', {
+                x: 220,
+                y: 500,
+                size: 15,
+                color: PDFLib.rgb(0, 0, 0),
+                font: helveticaFont
+            });
+
+            // Specify the position of the certified name
+            firstPage.drawText(entry.certifiedName, {
+                x: 200,
+                y: 450,
+                size: 16,
+                color: PDFLib.rgb(0, 0, 0),
+                font: helveticaBoldFont // Use bold font
+            });
+
+            // Add "Has attended:" text
+            firstPage.drawText('Has attended:', {
+                x: 250,
+                y: 400,
+                size: 20,
+                color: PDFLib.rgb(0, 0, 0),
+                font: helveticaFont
+            });
+
+            // Specify the position of the attendee name
+            firstPage.drawText(entry.attendeeName, {
+                x: 140,
+                y: 370,
+                size: 16,
+                color: PDFLib.rgb(0, 0, 0),
+                font: helveticaBoldFont // Use bold font
+            });
+
+            // Specify the position of the held on date
+            firstPage.drawText('Held on: ' + entry.heldOn, {
+                x: 199.44,
+                y: 320,
+                size: 12,
+                color: PDFLib.rgb(0, 0, 0),
+                font: helveticaFont
+            });
+
+            // Specify the position of the CPD hours
+            firstPage.drawText('Total CPD Hours: ' + entry.cpdHours, {
+                x: 217.44,
+                y: 270,
+                size: 12,
+                color: PDFLib.rgb(0, 0, 0),
+                font: helveticaFont
+            });
+
+            // Specify the position of the membership number
+            firstPage.drawText('Membership No: ' + entry.membershipNo, {
+                x: 370,
+                y: 80,
+                size: 12,
+                color: PDFLib.rgb(0, 0, 0),
+                font: helveticaFont
+            });
+
+            // Save the modified PDF
+            const pdfBytes = await pdfDoc.save();
+            const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+            const urlBlob = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = urlBlob;
+            a.download = `certificate_${entry.certifiedName}.pdf`; // Unique filename
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        } catch (error) {
+            console.error('Error loading PDF template:', error);
+            alert('Failed to load PDF template. Please check the file path or Excel file.');
+        }
+    }
+</script>
 
 </body>
 </html>
