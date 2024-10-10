@@ -158,7 +158,8 @@
             const urlBlob = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = urlBlob;
-            a.download = `certificate_${entry.memberName}.pdf`; // Unique filename
+            // Generate filename using membershipNo, memberName, and workshopName
+            a.download = `${entry.membershipNo}_${entry.memberName}_${entry.workshopName}.pdf`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
