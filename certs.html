@@ -29,6 +29,7 @@
                         <div class="d-grid gap-2">
                             <button id="generateButton" class="btn btn-success btn-lg">Generate Certificates</button>
                         </div>
+                        <div id="progressMessage" class="mt-3 text-center"></div>
                     </div>
                 </div>
             </div>
@@ -39,15 +40,23 @@
         document.getElementById('generateButton').addEventListener('click', async () => {
             const fileInput = document.getElementById('fileInput');
             const file = fileInput.files[0];
+            const progressMessage = document.getElementById('progressMessage');
+            const certificatesData = []; // Array to hold certificate details
 
             if (!file) {
                 alert("Please upload an Excel file.");
                 return;
             }
 
+            // Disable button to prevent multiple clicks
+            document.getElementById('generateButton').disabled = true;
+            progressMessage.innerHTML = "Processing...";
+
             const data = await readExcel(file);
             if (!data || data.length < 2) {
                 alert("No valid data found in the Excel file.");
+                document.getElementById('generateButton').disabled = false;
+                progressMessage.innerHTML = "";
                 return;
             }
 
@@ -57,6 +66,14 @@
 
                 const [memberName, workshopName, heldOn, cpdHours, membershipNo] = entry;
 
+                // Validate entry data
+                if (!memberName || !workshopName || !heldOn || !cpdHours || !membershipNo) {
+                    alert(`Missing data in entry #${i}. Please check all required fields.`);
+                    continue;
+                }
+
+                progressMessage.innerHTML = `Generating certificate ${i} of ${data.length - 1}...`;
+
                 // Generate PDF for each entry
                 await generatePDF({
                     memberName,
@@ -65,7 +82,24 @@
                     cpdHours,
                     membershipNo
                 });
+
+                // Collect data for the JSON report
+                certificatesData.push({
+                    memberName,
+                    workshopName,
+                    heldOn,
+                    cpdHours,
+                    membershipNo,
+                    filename: `${membershipNo}_${memberName}_${workshopName}.pdf`
+                });
             }
+
+            // Generate JSON report after creating all certificates
+            generateJSONReport(certificatesData);
+
+            alert("All certificates have been generated.");
+            document.getElementById('generateButton').disabled = false;
+            progressMessage.innerHTML = "";
         });
 
         async function readExcel(file) {
@@ -182,6 +216,23 @@
                 console.error('Error loading PDF template:', error);
                 alert('Failed to load PDF template. Please check the file path or Excel file.');
             }
+        }
+
+        function generateJSONReport(certificatesData) {
+            const jsonReport = {
+                totalCertificates: certificatesData.length,
+                certificates: certificatesData
+            };
+
+            // Create a Blob with the JSON data
+            const jsonBlob = new Blob([JSON.stringify(jsonReport, null, 2)], { type: 'application/json' });
+            const jsonUrl = URL.createObjectURL(jsonBlob);
+            const a = document.createElement('a');
+            a.href = jsonUrl;
+            a.download = 'certificate_report.json'; // Name for the JSON file
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
         }
     </script>
 
