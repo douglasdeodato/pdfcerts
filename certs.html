@@ -30,9 +30,6 @@
                             <button id="generateButton" class="btn btn-success btn-lg">Generate Certificates</button>
                         </div>
                     </div>
-                    <div class="card-footer text-muted text-center">
-                        <small>Powered by PDF-Lib & XLSX</small>
-                    </div>
                 </div>
             </div>
         </div>
@@ -109,7 +106,7 @@
 
                 // Draw text on the PDF
                 firstPage.drawText('THIS CERTIFIES THAT:', {
-                    x: 220,
+                    x: 230,
                     y: 500,
                     size: 15,
                     color: PDFLib.rgb(0, 0, 0),
@@ -118,7 +115,7 @@
 
                 // Specify the position of the member name
                 firstPage.drawText(entry.memberName, {
-                    x: 200,
+                    x: 260,
                     y: 450,
                     size: 16,
                     color: PDFLib.rgb(0, 0, 0),
@@ -136,7 +133,7 @@
 
                 // Specify the position of the workshop name
                 firstPage.drawText(entry.workshopName, {
-                    x: 140,
+                    x: 230,
                     y: 370,
                     size: 16,
                     color: PDFLib.rgb(0, 0, 0),
@@ -145,7 +142,7 @@
 
                 // Specify the position of the held on date
                 firstPage.drawText('Held on: ' + entry.heldOn, {
-                    x: 199.44,
+                    x: 230,
                     y: 320,
                     size: 12,
                     color: PDFLib.rgb(0, 0, 0),
@@ -154,7 +151,7 @@
 
                 // Specify the position of the CPD hours
                 firstPage.drawText('Total CPD Hours: ' + entry.cpdHours, {
-                    x: 217.44,
+                    x: 260,
                     y: 270,
                     size: 12,
                     color: PDFLib.rgb(0, 0, 0),
