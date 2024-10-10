@@ -219,8 +219,11 @@
         }
 
         function generateJSONReport(certificatesData) {
+            const timestamp = new Date().toLocaleString(); // Get current date and time
+
             const jsonReport = {
                 totalCertificates: certificatesData.length,
+                runDate: timestamp, // Add timestamp to the JSON report
                 certificates: certificatesData
             };
 
