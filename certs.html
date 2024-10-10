@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PDF Certificate Generator</title>
     <!-- Load Bootstrap 5 CSS -->
-    <link href="bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Load pdf-lib library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
     <!-- Load xlsx library -->
@@ -74,6 +74,8 @@
                 return;
             }
 
+            let workshopNameForReport = ''; // Variable to store workshop name for the report filename
+
             for (let i = 1; i < data.length; i++) { // Start from 1 to skip header row
                 const entry = data[i];
                 if (entry.length === 0) continue; // Skip empty lines
@@ -87,6 +89,11 @@
                 }
 
                 progressMessage.innerHTML = `Generating certificate ${i} of ${data.length - 1}...`;
+
+                // Set workshop name for JSON filename (only once)
+                if (i === 1) {
+                    workshopNameForReport = workshopName.replace(/\s+/g, '_'); // Replace spaces with underscores
+                }
 
                 // Generate PDF for each entry
                 await generatePDF({
@@ -109,7 +116,7 @@
             }
 
             // Generate JSON report after creating all certificates
-            generateJSONReport(certificatesData, teamMemberName);
+            generateJSONReport(certificatesData, teamMemberName, workshopNameForReport);
 
             alert("All certificates have been generated.");
             document.getElementById('generateButton').disabled = false;
@@ -232,25 +239,30 @@
             }
         }
 
-        function generateJSONReport(certificatesData, teamMemberName) {
-            const timestamp = new Date().toLocaleString(); // Get current date and time
+        function generateJSONReport(certificatesData, teamMemberName, workshopNameForReport) {
+            const totalCertificatesGenerated = certificatesData.length;
+            const dateGenerated = new Date().toLocaleString(); // Current date and time
+
             const jsonReport = {
-                totalCertificatesGenerated: certificatesData.length, // Changed key name
-                date: timestamp,
-                certificatesGeneratedBy: teamMemberName, // Updated key name
+                totalCertificatesGenerated,
+                dateGenerated,
+                certificatesGeneratedBy: teamMemberName, // Replace teamMember with certificatesGeneratedBy
                 certificates: certificatesData // Detailed certificate info
             };
+
+            // Create JSON filename using workshop name and date
+            const fileName = `${workshopNameForReport}_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.json`;
 
             // Output JSON to console
             const jsonString = JSON.stringify(jsonReport, null, 2);
             console.log(jsonString);
 
-            // Optionally, save the JSON report to a file
+            // Save the JSON report to a file with the generated filename
             const blob = new Blob([jsonString], { type: 'application/json' });
             const urlBlob = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = urlBlob;
-            a.download = 'certificate_report.json';
+            a.download = fileName;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
